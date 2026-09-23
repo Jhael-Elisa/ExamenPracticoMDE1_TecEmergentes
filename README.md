@@ -1,4 +1,4 @@
-Las claves paara el acceso son:
+Las claves para el acceso son:
 
 
 Usuario: rrhh_user
