@@ -1,10 +1,20 @@
 import os
-from datetime import datetime
+from datetime import datetime, date, time
 from flask import Flask, request, jsonify
+from flask.json.provider import DefaultJSONProvider
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+# ✅ Fix del bug "Object of type time is not JSON serializable"
+class CustomJSONProvider(DefaultJSONProvider):
+    @staticmethod
+    def default(obj):
+        if isinstance(obj, (date, time)):
+            return obj.isoformat()
+        return DefaultJSONProvider.default(obj)
+
 app = Flask(__name__)
+app.json = CustomJSONProvider(app)
 
 def get_db():
     return psycopg2.connect(
@@ -16,6 +26,7 @@ def get_db():
     )
 
 def calcular_estado(hora_prog, hora_real):
+    """Lógica de negocio: PUNTUAL si llega a la hora o antes, ATRASO si después."""
     if not hora_prog or not hora_real:
         return 'INCOMPLETO'
     prog = datetime.strptime(hora_prog, '%H:%M').time()
@@ -49,6 +60,8 @@ def validar_marcacion(data):
             errores.append('hora_salida_real no puede ser anterior a hora_ingreso_real')
     return errores
 
+# ---------- ENDPOINTS ----------
+
 @app.route('/api/marcaciones', methods=['POST'])
 def crear_marcacion():
     data = request.get_json()
@@ -70,7 +83,7 @@ def crear_marcacion():
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING *
         """, (
-            data['codigo_empleado'], data.get('nombre_empleado'), data['fecha'],
+            data['codigo_empleado'], data.get('nombre_empleado', ''), data['fecha'],
             data.get('hora_ingreso_programada'), data.get('hora_ingreso_real'),
             data.get('hora_salida_programada'), data.get('hora_salida_real'),
             estado, data.get('observacion')
@@ -82,6 +95,7 @@ def crear_marcacion():
         return jsonify(nueva), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/marcaciones', methods=['GET'])
 def listar_marcaciones():
@@ -108,6 +122,7 @@ def listar_marcaciones():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/marcaciones/<int:id>', methods=['GET'])
 def obtener_marcacion(id):
     try:
@@ -122,6 +137,7 @@ def obtener_marcacion(id):
         return jsonify({'error': 'No encontrado'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/marcaciones/<int:id>', methods=['PUT'])
 def actualizar_marcacion(id):
@@ -143,7 +159,7 @@ def actualizar_marcacion(id):
                 estado=%s, observacion=%s
             WHERE id=%s RETURNING *
         """, (
-            data['codigo_empleado'], data.get('nombre_empleado'), data['fecha'],
+            data['codigo_empleado'], data.get('nombre_empleado', ''), data['fecha'],
             data.get('hora_ingreso_programada'), data.get('hora_ingreso_real'),
             data.get('hora_salida_programada'), data.get('hora_salida_real'),
             estado, data.get('observacion'), id
@@ -157,6 +173,7 @@ def actualizar_marcacion(id):
         return jsonify({'error': 'No encontrado'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/marcaciones/<int:id>', methods=['DELETE'])
 def eliminar_marcacion(id):
@@ -173,6 +190,7 @@ def eliminar_marcacion(id):
         return jsonify({'error': 'No encontrado'}), 404
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

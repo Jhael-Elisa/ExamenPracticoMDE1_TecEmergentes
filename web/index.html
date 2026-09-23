@@ -2,43 +2,65 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>RRHH - JGuevara-Marcaciones</title>   
+    <title>RRHH - Marcaciones</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        h1 { color: #1a4b8c; }
+        h2 { color: #333; border-bottom: 2px solid #1a4b8c; padding-bottom: 5px; }
+        .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input, button { padding: 8px; margin: 3px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #1a4b8c; color: white; cursor: pointer; }
+        button:hover { background: #0d2f5c; }
+        table { border-collapse: collapse; width: 100%; background: white; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 13px; }
+        th { background: #1a4b8c; color: white; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .estado-PUNTUAL { color: green; font-weight: bold; }
+        .estado-ATRASO { color: orange; font-weight: bold; }
+        .estado-INCOMPLETO { color: gray; font-weight: bold; }
+        .btn-sm { padding: 4px 8px; font-size: 12px; }
+        .btn-danger { background: #c0392b; }
+    </style>
 </head>
 <body>
-    <h1>Registro de Marcaciones</h1>
+    <h1>📋 Sistema de Marcaciones - RRHH</h1>
 
-    <h2>Nueva Marcación</h2>
-    <div id="formulario">
-        <input id="codigo_empleado" placeholder="Código empleado" required>
-        <input id="nombre_empleado" placeholder="Nombre completo">
+    <div class="card">
+        <h2>Registrar / Editar Marcación</h2>
+        <input id="codigo_empleado" placeholder="Código empleado *" required>
+        <input id="nombre_empleado" placeholder="Nombre completo *" required>
         <input id="fecha" type="date" required>
-        <input id="hora_ingreso_programada" type="time" placeholder="Ingreso programado">
-        <input id="hora_ingreso_real" type="time" placeholder="Ingreso real">
-        <input id="hora_salida_programada" type="time" placeholder="Salida programada">
-        <input id="hora_salida_real" type="time" placeholder="Salida real">
-        <input id="observacion" placeholder="Observación">
-        <button onclick="guardar()">Guardar</button>
-        <button onclick="limpiar()">Limpiar</button>
+        <input id="hora_ingreso_programada" type="time" title="Ingreso programado">
+        <input id="hora_ingreso_real" type="time" title="Ingreso real">
+        <input id="hora_salida_programada" type="time" title="Salida programada">
+        <input id="hora_salida_real" type="time" title="Salida real">
+        <input id="observacion" placeholder="Observación" style="width: 250px;">
+        <button onclick="guardar()">💾 Guardar</button>
+        <button onclick="limpiar()" style="background: #666;">🔄 Limpiar</button>
     </div>
 
-    <h2>Filtrar</h2>
-    <input id="filtro_empleado" placeholder="Código empleado">
-    <input id="filtro_fecha" type="date">
-    <button onclick="cargar()">Filtrar</button>
-    <button onclick="limpiarFiltros()">Mostrar todos</button>
+    <div class="card">
+        <h2>Filtrar</h2>
+        <input id="filtro_empleado" placeholder="Código empleado">
+        <input id="filtro_fecha" type="date">
+        <button onclick="cargar()">🔍 Filtrar</button>
+        <button onclick="limpiarFiltros()" style="background: #666;">Mostrar todos</button>
+    </div>
 
-    <h2>Marcaciones</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th><th>Empleado</th><th>Fecha</th>
-                <th>Ingreso prog.</th><th>Ingreso real</th>
-                <th>Salida prog.</th><th>Salida real</th>
-                <th>Estado</th><th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody id="tabla"></tbody>
-    </table>
+    <div class="card">
+        <h2>Marcaciones Registradas</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th><th>Empleado</th><th>Fecha</th>
+                    <th>Ing. prog.</th><th>Ing. real</th>
+                    <th>Sal. prog.</th><th>Sal. real</th>
+                    <th>Estado</th><th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tabla"></tbody>
+        </table>
+    </div>
 
     <script>
         const API = '/api/marcaciones';
@@ -53,28 +75,37 @@
             if (fecha) params.push(`fecha=${encodeURIComponent(fecha)}`);
             if (params.length) url += '?' + params.join('&');
 
-            const res = await fetch(url);
-            const data = await res.json();
-            const tbody = document.getElementById('tabla');
-            tbody.innerHTML = '';
-            data.forEach(m => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${m.id}</td>
-                    <td>${m.codigo_empleado} - ${m.nombre_empleado || ''}</td>
-                    <td>${m.fecha?.split('T')[0] || m.fecha}</td>
-                    <td>${m.hora_ingreso_programada || ''}</td>
-                    <td>${m.hora_ingreso_real || ''}</td>
-                    <td>${m.hora_salida_programada || ''}</td>
-                    <td>${m.hora_salida_real || ''}</td>
-                    <td>${m.estado || ''}</td>
-                    <td>
-                        <button onclick="editar(${m.id})">Editar</button>
-                        <button onclick="eliminar(${m.id})">Eliminar</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Error al cargar');
+                const data = await res.json();
+                const tbody = document.getElementById('tabla');
+                tbody.innerHTML = '';
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">No hay marcaciones</td></tr>';
+                    return;
+                }
+                data.forEach(m => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${m.id}</td>
+                        <td>${m.codigo_empleado} - ${m.nombre_empleado || ''}</td>
+                        <td>${m.fecha?.split('T')[0] || m.fecha}</td>
+                        <td>${m.hora_ingreso_programada || ''}</td>
+                        <td>${m.hora_ingreso_real || ''}</td>
+                        <td>${m.hora_salida_programada || ''}</td>
+                        <td>${m.hora_salida_real || ''}</td>
+                        <td class="estado-${m.estado}">${m.estado || ''}</td>
+                        <td>
+                            <button class="btn-sm" onclick="editar(${m.id})">Editar</button>
+                            <button class="btn-sm btn-danger" onclick="eliminar(${m.id})">Eliminar</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
         }
 
         async function guardar() {
@@ -82,28 +113,32 @@
                 codigo_empleado: document.getElementById('codigo_empleado').value,
                 nombre_empleado: document.getElementById('nombre_empleado').value,
                 fecha: document.getElementById('fecha').value,
-                hora_ingreso_programada: document.getElementById('hora_ingreso_programada').value,
-                hora_ingreso_real: document.getElementById('hora_ingreso_real').value,
-                hora_salida_programada: document.getElementById('hora_salida_programada').value,
-                hora_salida_real: document.getElementById('hora_salida_real').value,
+                hora_ingreso_programada: document.getElementById('hora_ingreso_programada').value || null,
+                hora_ingreso_real: document.getElementById('hora_ingreso_real').value || null,
+                hora_salida_programada: document.getElementById('hora_salida_programada').value || null,
+                hora_salida_real: document.getElementById('hora_salida_real').value || null,
                 observacion: document.getElementById('observacion').value
             };
 
             const method = editandoId ? 'PUT' : 'POST';
             const url = editandoId ? `${API}/${editandoId}` : API;
 
-            const res = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-
-            if (res.ok) {
-                limpiar();
-                cargar();
-            } else {
-                const err = await res.json();
-                alert('Error: ' + JSON.stringify(err));
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert('✅ Guardado correctamente. Estado: ' + data.estado);
+                    limpiar();
+                    cargar();
+                } else {
+                    alert('❌ Error: ' + JSON.stringify(data));
+                }
+            } catch (e) {
+                alert('Error de conexión: ' + e.message);
             }
         }
 
@@ -113,22 +148,31 @@
             document.getElementById('codigo_empleado').value = m.codigo_empleado;
             document.getElementById('nombre_empleado').value = m.nombre_empleado || '';
             document.getElementById('fecha').value = m.fecha?.split('T')[0] || m.fecha;
-            document.getElementById('hora_ingreso_programada').value = m.hora_ingreso_programada || '';
-            document.getElementById('hora_ingreso_real').value = m.hora_ingreso_real || '';
-            document.getElementById('hora_salida_programada').value = m.hora_salida_programada || '';
-            document.getElementById('hora_salida_real').value = m.hora_salida_real || '';
+            document.getElementById('hora_ingreso_programada').value = (m.hora_ingreso_programada || '').substring(0,5);
+            document.getElementById('hora_ingreso_real').value = (m.hora_ingreso_real || '').substring(0,5);
+            document.getElementById('hora_salida_programada').value = (m.hora_salida_programada || '').substring(0,5);
+            document.getElementById('hora_salida_real').value = (m.hora_salida_real || '').substring(0,5);
             document.getElementById('observacion').value = m.observacion || '';
             editandoId = id;
+            window.scrollTo(0, 0);
         }
 
         async function eliminar(id) {
-            if (!confirm('¿Eliminar marcación?')) return;
+            if (!confirm('¿Eliminar marcación ' + id + '?')) return;
             const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
             if (res.ok) cargar();
+            else alert('Error al eliminar');
         }
 
         function limpiar() {
-            document.querySelectorAll('input').forEach(i => i.value = '');
+            document.getElementById('codigo_empleado').value = '';
+            document.getElementById('nombre_empleado').value = '';
+            document.getElementById('fecha').value = '';
+            document.getElementById('hora_ingreso_programada').value = '';
+            document.getElementById('hora_ingreso_real').value = '';
+            document.getElementById('hora_salida_programada').value = '';
+            document.getElementById('hora_salida_real').value = '';
+            document.getElementById('observacion').value = '';
             editandoId = null;
         }
 
