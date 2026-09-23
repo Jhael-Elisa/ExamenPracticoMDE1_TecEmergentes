@@ -1,9 +1,3 @@
-Las claves para el acceso son:
-
-
-Usuario: rrhh_user
-Contraseña: supersecret
-
 
 Se tuvieron problemas para que la api funcione correctamente, debido a que no me reconoce el puerto 
 
