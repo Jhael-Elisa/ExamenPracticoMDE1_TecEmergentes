@@ -1,0 +1,55 @@
+version: '3.9'
+
+services:
+  database:
+    image: postgres:15-alpine
+    container_name: rrhh_database
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - rrhh_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # No expone por seguridad, ya que solo se accede desde la red interna del contenedor
+
+  api:
+    build: ./api
+    container_name: rrhh_api
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - rrhh_net
+    ports:
+      - "5000:5000"
+
+  web:
+    build: ./web
+    container_name: rrhh_web
+    depends_on:
+      - api
+    networks:
+      - rrhh_net
+    ports:
+      - "8080:80"
+
+volumes:
+  postgres_data:
+
+networks:
+  rrhh_net:
+    driver: bridge
