@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>RRHH - JGuevara-Marcaciones</title>   
+</head>
+<body>
+    <h1>Registro de Marcaciones</h1>
+
+    <h2>Nueva Marcación</h2>
+    <div id="formulario">
+        <input id="codigo_empleado" placeholder="Código empleado" required>
+        <input id="nombre_empleado" placeholder="Nombre completo">
+        <input id="fecha" type="date" required>
+        <input id="hora_ingreso_programada" type="time" placeholder="Ingreso programado">
+        <input id="hora_ingreso_real" type="time" placeholder="Ingreso real">
+        <input id="hora_salida_programada" type="time" placeholder="Salida programada">
+        <input id="hora_salida_real" type="time" placeholder="Salida real">
+        <input id="observacion" placeholder="Observación">
+        <button onclick="guardar()">Guardar</button>
+        <button onclick="limpiar()">Limpiar</button>
+    </div>
+
+    <h2>Filtrar</h2>
+    <input id="filtro_empleado" placeholder="Código empleado">
+    <input id="filtro_fecha" type="date">
+    <button onclick="cargar()">Filtrar</button>
+    <button onclick="limpiarFiltros()">Mostrar todos</button>
+
+    <h2>Marcaciones</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th><th>Empleado</th><th>Fecha</th>
+                <th>Ingreso prog.</th><th>Ingreso real</th>
+                <th>Salida prog.</th><th>Salida real</th>
+                <th>Estado</th><th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="tabla"></tbody>
+    </table>
+
+    <script>
+        const API = '/api/marcaciones';
+        let editandoId = null;
+
+        async function cargar() {
+            const empleado = document.getElementById('filtro_empleado').value;
+            const fecha = document.getElementById('filtro_fecha').value;
+            let url = API;
+            const params = [];
+            if (empleado) params.push(`empleado=${encodeURIComponent(empleado)}`);
+            if (fecha) params.push(`fecha=${encodeURIComponent(fecha)}`);
+            if (params.length) url += '?' + params.join('&');
+
+            const res = await fetch(url);
+            const data = await res.json();
+            const tbody = document.getElementById('tabla');
+            tbody.innerHTML = '';
+            data.forEach(m => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${m.id}</td>
+                    <td>${m.codigo_empleado} - ${m.nombre_empleado || ''}</td>
+                    <td>${m.fecha?.split('T')[0] || m.fecha}</td>
+                    <td>${m.hora_ingreso_programada || ''}</td>
+                    <td>${m.hora_ingreso_real || ''}</td>
+                    <td>${m.hora_salida_programada || ''}</td>
+                    <td>${m.hora_salida_real || ''}</td>
+                    <td>${m.estado || ''}</td>
+                    <td>
+                        <button onclick="editar(${m.id})">Editar</button>
+                        <button onclick="eliminar(${m.id})">Eliminar</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function guardar() {
+            const body = {
+                codigo_empleado: document.getElementById('codigo_empleado').value,
+                nombre_empleado: document.getElementById('nombre_empleado').value,
+                fecha: document.getElementById('fecha').value,
+                hora_ingreso_programada: document.getElementById('hora_ingreso_programada').value,
+                hora_ingreso_real: document.getElementById('hora_ingreso_real').value,
+                hora_salida_programada: document.getElementById('hora_salida_programada').value,
+                hora_salida_real: document.getElementById('hora_salida_real').value,
+                observacion: document.getElementById('observacion').value
+            };
+
+            const method = editandoId ? 'PUT' : 'POST';
+            const url = editandoId ? `${API}/${editandoId}` : API;
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            if (res.ok) {
+                limpiar();
+                cargar();
+            } else {
+                const err = await res.json();
+                alert('Error: ' + JSON.stringify(err));
+            }
+        }
+
+        async function editar(id) {
+            const res = await fetch(`${API}/${id}`);
+            const m = await res.json();
+            document.getElementById('codigo_empleado').value = m.codigo_empleado;
+            document.getElementById('nombre_empleado').value = m.nombre_empleado || '';
+            document.getElementById('fecha').value = m.fecha?.split('T')[0] || m.fecha;
+            document.getElementById('hora_ingreso_programada').value = m.hora_ingreso_programada || '';
+            document.getElementById('hora_ingreso_real').value = m.hora_ingreso_real || '';
+            document.getElementById('hora_salida_programada').value = m.hora_salida_programada || '';
+            document.getElementById('hora_salida_real').value = m.hora_salida_real || '';
+            document.getElementById('observacion').value = m.observacion || '';
+            editandoId = id;
+        }
+
+        async function eliminar(id) {
+            if (!confirm('¿Eliminar marcación?')) return;
+            const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+            if (res.ok) cargar();
+        }
+
+        function limpiar() {
+            document.querySelectorAll('input').forEach(i => i.value = '');
+            editandoId = null;
+        }
+
+        function limpiarFiltros() {
+            document.getElementById('filtro_empleado').value = '';
+            document.getElementById('filtro_fecha').value = '';
+            cargar();
+        }
+
+        cargar();
+    </script>
+</body>
+</html>
